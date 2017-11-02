@@ -4,6 +4,7 @@
   "description": "",
   "main": "bcart.js",
   "dependencies": {
+    "bignumber.js": "^4.1.0",
     "ethereumjs-tx": "^1.3.3",
     "repl.history": "^0.1.4",
     "tiinytiny": "^0.1.4",

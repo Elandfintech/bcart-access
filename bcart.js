@@ -1,11 +1,11 @@
 (()=>{
 	"use strict";
 	
+	const BN	 = require( 'bignumber.js' );
 	const Web3	 = require( 'web3' );
 	const crypto = require( 'crypto' );
 	const ethTx	 = require( 'ethereumjs-tx' );
 	
-	const sha256 = crypto.createHash( 'sha256' );
 	const bcartAPIs = {};
 	
 	
@@ -40,42 +40,9 @@
 		},
 		GetBlock:{
 			writable:false, enumerable:true, configurable:false,
-			value:(blockId='latest', options={}) => {
+			value:(blockId='latest', options={})=>{
 				return __CHECK_VALID().then(()=>{
-					return new Promise((fulfill, reject)=>{
-						let fullRecords = (options.fullRecords === undefined) ? true : !!options.fullRecords;
-						let parseTxn		= (options.parseTxn === undefined) ? true : !!options.parseTxn;
-						__web3Conn.eth.getBlock(blockId, fullRecords, (err, block)=>{
-							if ( err ) {
-								reject(err);
-								return;
-							}
-							
-							if ( parseTxn ) {
-								block.transactions.forEach((record)=>{
-									try {
-										if ( record.input === '0x' ) {
-											throw "Simple Transaction";
-										}
-										
-										let raw	= record.input;
-										let rawContract = Buffer.from(raw.substring(2), 'hex');
-										let contract = JSON.parse(rawContract.toString( 'utf8' ));
-										record.contractInfo = {
-											hash: sha256.update(rawContract).digest( 'hex' ),
-											content:contract,
-										};
-										record.symmerified  = true;
-									}
-									catch(err) {
-										record.symmerified = false;
-									}
-								});
-							}
-							
-							fulfill(block);
-						});
-					});
+					return __FETCH_BLOCK(blockId, options);
 				});
 			}
 		},
@@ -112,7 +79,7 @@
 		},
 		SendRecord:{
 			writable:false, enumerable:true, configurable:false,
-			value:()=>(from, to, data, nonce)=>{
+			value:(from, to, data, nonce)=>{
 				return __CHECK_VALID().then(()=>{
 					return new Promise((fulfill, reject)=>{
 						__web3Conn.eth.sendRawTransaction(
@@ -122,14 +89,92 @@
 					});
 				});
 			}
+		},
+		TraverseBlocks:{
+			writable:false, enumerable:true, configurable:false,
+			value:(options={}, callback=(b,ctrl)=>{ctrl.more=false})=>{
+				__CHECK_VALID_SYNC();
+				return __TRAVERSE_BLOCKS(options, callback);
+			}
 		}
 	});
 	
 	
+	function __TRAVERSE_BLOCKS(options, callback) {
+		let control = {more:true};
+		let {from, to, getEmpty} = options;
+		let qOptions = {
+			fullRecords: options.fullRecords,
+			parseTxn: options.parseTxn
+		};
+		
+		from = from || 'latest';
+		getEmpty = !!getEmpty;
+		to = to || null;
+		
+		
+
+
+		
+		return __FETCH_BLOCK(from||'latest', qOptions).then(__FETCH_NEXT_BLOCK);
+		
+		
+		function __FETCH_NEXT_BLOCK(blockInfo) {
+			if (!getEmpty && (blockInfo.transactions.length > 0)) {
+				control.more = true;
+				callback(blockInfo, control);
+			}
+			
+			if ( control.more && (!to || (blockInfo.hash !== to)) ) {
+				let number = new BN.BigNumber(blockInfo.parentHash);
+				if ( !number.equals(0) ) {
+					return __FETCH_BLOCK(blockInfo.parentHash, qOptions).then(__FETCH_NEXT_BLOCK);
+				}
+			}
+		}
+	}
+	function __FETCH_BLOCK(blockId='latest', options={}) {
+		return new Promise((fulfill, reject)=>{
+			let fullRecords = (options.fullRecords === undefined) ? true : !!options.fullRecords;
+			let parseTxn = (options.parseTxn === undefined) ? true : !!options.parseTxn;
+		
+		
+			__web3Conn.eth.getBlock(blockId, fullRecords, (err, block)=>{
+				if ( err ) {
+					reject(err);
+					return;
+				}
+			
+				if ( parseTxn ) {
+					block.transactions.forEach((record)=>{
+						try {
+							if ( record.input === '0x' ) {
+								throw "Simple Transaction";
+							}
+							
+							let raw	= record.input;
+							let rawContract = Buffer.from(raw.substring(2), 'hex');
+							let contract = JSON.parse(rawContract.toString( 'utf8' ));
+							let sha256 = crypto.createHash( 'sha256' );
+							record.contract = {
+								hash: sha256.update(rawContract).digest( 'hex' ),
+								content:contract,
+							};
+							record.symmerified  = true;
+						}
+						catch(err) {
+							record.symmerified = false;
+						}
+					});
+				}
+				
+				fulfill(block);
+			});
+		});
+	}
 	function __CHECK_VALID() {
 		return new Promise((fulfill, reject)=>{ __web3Conn ? fulfill() : reject(); });
 	}
-	
 	function __CHECK_VALID_SYNC() {
 		if ( !__web3Conn ) {
 			throw "Web3 connection hasn't been initialized!";

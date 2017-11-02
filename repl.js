@@ -27,6 +27,7 @@
 		hist(repl_server, './.history');
 		
 		tiiny.ImprintProperties(repl_server.context, {
+			console: console,
 			web3: bcart.Connection,
 			eth: bcart.Connection.eth,
 			bcart: tiiny.ImprintProperties({}, {
@@ -44,8 +45,8 @@
 				},
 				getBlock: (...args)=>{
 					bcart.GetBlock(...args)
-					.then((blockData)=>{__OUTPUT_LOG(blockData);})
-					.catch((err)=>{__OUTPUT_LOG(err);});
+					.then((blockData)=>{console.clog(blockData);})
+					.catch((err)=>{console.clog(err);});
 				},
 				genRecord: (...args)=>{
 					let [from, to, data, nounce] = [];
@@ -70,14 +71,24 @@
 					}
 					
 					return bcart.SendRecord(from||__defaultKey, to, data, nounce);
+				},
+				traverseBlock:(...args)=>{
+					let [options, callback] = args;
+					if ( args.length < 2 ) {
+						callback = options;
+						options = {};
+					}
+				
+					return bcart.TraverseBlocks(options, callback);
 				}
 			}, [true, true, false])
 		}, [true, true, false]);
 	});
 	
 	
-	
-	function __OUTPUT_LOG(data) {
-		console.log(util.inspect(data, {colors:true, depth:10}));
-	}
+	console.clog=function(...args){
+		args.forEach((arg)=>{
+			this.log(util.inspect(arg, {colors:true, depth:10}));
+		});
+	};
 })();
