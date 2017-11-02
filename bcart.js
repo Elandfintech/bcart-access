@@ -91,7 +91,7 @@
 
 				
 				//get current median gasPrice
-	//			var price = web3Conn.eth.gasPrice;
+//				var price = web3Conn.eth.gasPrice;
 				
 				let data_hex = __web3Conn.toHex(JSON.stringify(data));   // extra note
 				let tx = new ethTx({
@@ -122,7 +122,7 @@
 					});
 				});
 			}
-		},
+		}
 	});
 	
 	
