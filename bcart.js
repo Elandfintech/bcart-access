@@ -2,14 +2,12 @@
 	"use strict";
 	
 	const tiiny	 = require( 'tiinytiny' );
-	const fs	 = require( 'fs' );
 	const BN	 = require( 'bignumber.js' );
 	const Web3	 = require( 'web3' );
 	const crypto = require( 'crypto' );
 	const ethTx	 = require( 'ethereumjs-tx' );
 	const mongo	 = require( 'mongodb' );
 	const config = require( 'json-cfg' );
-	const util	 = require( 'util' );
 	
 	const bcartAPIs = {};
 	
@@ -109,6 +107,7 @@
 			}
 		}
 	});
+	
 	
 	
 	function __TRAVERSE_BLOCKS(options, callback) {
