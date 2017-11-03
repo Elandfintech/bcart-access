@@ -307,12 +307,8 @@
 									version:contract.version,
 									status:cType < 0 ? -1 : 0,
 									type:cType,
-									end:0,
-									update:0,
+									init:0, update:0, end:0,
 									contract:contract
-								},
-								$min:{
-									init:block.timestamp
 								},
 								$push:{
 									records:txn
@@ -320,6 +316,38 @@
 							}, {upsert:true, returnOriginal:false})
 							.then((result)=>{
 								const doc = result.value;
+								let updates = { init:0, update:0, end:0 };
+								
+								let rev = doc.records.slice(0).reverse();
+								updates.init = rev[0].blockTime;
+								rev.shift();
+								
+								
+								let terminated = false;
+								for( let record of rev ) {
+									updates.update = record.blockTime;
+									if (record.contract.content.ext) {
+										updates.end = record.blockTime;
+										terminated = true;
+										break;
+									}
+								}
+								
+								if ( doc.type === 1 ) {
+									if ( terminated ) {
+										updates.status = -1;
+									}
+									else {
+										updates.status = 1;
+									}
+								}
+								else
+								if ( terminated )
+								{
+									updates.status = 1;
+								}
+								
+								return txnColl.findOneAndUpdate({_id:doc._id}, {$set:updates});
 							});
 						}
 						else {
