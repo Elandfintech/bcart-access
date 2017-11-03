@@ -304,27 +304,32 @@
 							op = txnColl.findOneAndUpdate({hash:cHash}, {
 								$setOnInsert: {
 									hash:cHash,
-									version:contract.version,
-									status:cType < 0 ? -1 : 0,
-									type:cType,
 									init:0, update:0, end:0,
+								},
+								$set:{
+									type:cType,
+									status:cType < 0 ? -1 : 0,
+									version:contract.version,
 									contract:contract
 								},
 								$push:{
-									records:txn
+									records:{
+										$each:[txn],
+										$sort:{blockTime:1}
+									}
 								}
 							}, {upsert:true, returnOriginal:false})
 							.then((result)=>{
 								const doc = result.value;
 								let updates = { init:0, update:0, end:0 };
 								
-								let rev = doc.records.slice(0).reverse();
-								updates.init = rev[0].blockTime;
-								rev.shift();
+								let shadow = doc.records.slice(0);
+								let first = shadow.shift();
+								updates.init = first.blockTime;
 								
 								
 								let terminated = false;
-								for( let record of rev ) {
+								for( let record of shadow ) {
 									updates.update = record.blockTime;
 									if (record.contract.content.ext) {
 										updates.end = record.blockTime;
@@ -333,17 +338,7 @@
 									}
 								}
 								
-								if ( doc.type === 1 ) {
-									if ( terminated ) {
-										updates.status = -1;
-									}
-									else {
-										updates.status = 1;
-									}
-								}
-								else
-								if ( terminated )
-								{
+								if ( doc.type !== 1 && terminated ) {
 									updates.status = 1;
 								}
 								
@@ -373,7 +368,28 @@
 					
 					return Promise.all(_promises);
 				}
-			).then(()=>{
+			)
+			.then(()=>{
+				return new Promise((fulfill, reject)=>{
+					let _promises = [];
+					txnColl.find({type:1}).forEach((doc)=>{
+						let records = doc.records.slice(0);
+						
+						let prodTxn = records.shift(), update = {status:1};
+						records.forEach((record)=>{
+							let dest = new BN.BigNumber(record.to);
+							if (record.from === prodTxn.to && dest.eq(0)) {
+								update.status = -1;
+							}
+						});
+						
+						_promises.push(txnColl.findOneAndUpdate({_id:doc._id}, {$set:update}));
+					}, ()=>{
+						Promise.all(_promises).then(fulfill);
+					});
+				});
+			})
+			.then(()=>{
 				meta.value = latestBlock || meta.value;
 				return meta;
 			});
