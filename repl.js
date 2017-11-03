@@ -10,7 +10,8 @@
 	const util	= require( 'util' );
 	const bcart	= require( './bcart' );
 	
-	bcart.Initialize({url:'https://demo.elandfintech.com:8443/'}).then(()=>{
+	bcart.Initialize({url:'https://demo.elandfintech.com:8443/'})
+	.then(()=>{
 		let __defaultKey = null;
 		try {
 			let rawJSON = fs.readFileSync( `${__dirname}/default.key.json` );
@@ -83,6 +84,15 @@
 				}
 			}, [true, true, false])
 		}, [true, true, false]);
+		repl_server.on( 'exit', ()=>{ bcart.Finalize(); });
+	})
+	.catch((statuses)=>{
+		let [web3, db] = statuses;
+		if ( db.fulfilled ) {
+			db.close();
+		}
+		
+		return Promise.reject();
 	});
 	
 	
