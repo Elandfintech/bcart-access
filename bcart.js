@@ -185,8 +185,9 @@
 							let sha256 = crypto.createHash( 'sha256' );
 							record.contract = {
 								version:ver,
-								hash: '0x' + sha256.update(rawContract).digest( 'hex' ),
-								content:contract,
+								hash: '0x' + sha256.update(Buffer.from(JSON.stringify(contract.basis), 'utf8')).digest( 'hex' ),
+								type:contract.type,
+								content:contract
 							};
 							record.symmerified  = true;
 						}
