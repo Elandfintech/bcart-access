@@ -79,10 +79,13 @@
 					
 					return bcart.GenRecord(from||__defaultKey, to, data, nounce);
 				},
-				sendRecord: (...args)=>{
+				sendRecord: (...args)=>{console.log(args);
 					let [from, to, data, nounce] = [];
 					if ( args.length < 4 ) {
 						[to, data, nounce] = args;
+					}
+					else {
+						[from, to, data, nounce] = args;
 					}
 					
 					if ( !from && !__defaultKey ) {

@@ -338,7 +338,7 @@
 									}
 								}
 								
-								if ( doc.type !== 1 && terminated ) {
+								if ( doc.type >= 0 && doc.type !== 1 && terminated ) {
 									updates.status = 1;
 								}
 								
