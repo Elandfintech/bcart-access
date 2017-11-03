@@ -168,11 +168,11 @@
 							let contract = JSON.parse(rawContract.toString( 'utf8' ));
 							let sha256 = crypto.createHash( 'sha256' );
 							record.contract = {
+								version:ver,
 								hash: '0x' + sha256.update(rawContract).digest( 'hex' ),
 								content:contract,
 							};
 							record.symmerified  = true;
-							record.version = ver;
 						}
 						catch(err) {
 							record.symmerified = false;
@@ -214,7 +214,7 @@
 		});
 	}
 	function __INITIATE_DB(info){
-		return __CONNECT_DB(info).then(__PREPARE_DB_CONTENT);
+		return __CONNECT_DB(info).then(__PREPARE_DB);
 	}
 	function __CONNECT_DB(info) {
 		return new Promise((fulfill, reject)=>{
@@ -242,7 +242,11 @@
 			});
 		});
 	}
-	function __PREPARE_DB_CONTENT() {
+	function __PREPARE_DB() {
+	
+	}
+	
+	function __UPDATE_CACHE() {
 		return new Promise((fulfill, reject)=>{
 			let metaColl = __db.collection( 'meta' );
 			
@@ -282,6 +286,7 @@
 							op = txnColl.findOneAndUpdate({hash:cHash}, {
 								$setOnInsert: {
 									hash:cHash,
+									version:contract.version,
 									status:cType < 0 ? -1 : 0,
 									type:cType,
 									init:block.timestamp,
@@ -302,6 +307,7 @@
 							op = txnColl.findOneAndUpdate({hash:txn.hash}, {
 								$setOnInsert: {
 									hash:txn.hash,
+									version:1,
 									status:1,
 									type:0,
 									init:block.timestamp,
