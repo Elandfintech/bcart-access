@@ -105,6 +105,23 @@
 				__CHECK_VALID_SYNC();
 				return __TRAVERSE_BLOCKS(options, callback);
 			}
+		},
+		PurgeCache:{
+			writable:false, enumerable:true, configurable:false,
+			value:()=>{
+				return __CHECK_VALID().then(()=>{
+					return tiiny.PromiseWaitAll([
+						__db.collection( 'txn' ).deleteMany({}).then(()=>{}),
+						__db.collection( 'meta' ).deleteMany({}).then(()=>{})
+					]);
+				});
+			}
+		},
+		UpdateCache:{
+			writable:false, enumerable:true, configurable:false,
+			value:()=>{
+				return __CHECK_VALID().then(__UPDATE_CACHE);
+			}
 		}
 	});
 	
