@@ -7,7 +7,6 @@
 	const crypto = require( 'crypto' );
 	const ethTx	 = require( 'ethereumjs-tx' );
 	const mongo	 = require( 'mongodb' );
-	const config = require( 'json-cfg' );
 	
 	const bcartAPIs = {};
 	
@@ -235,9 +234,8 @@
 	}
 	function __CONNECT_DB(info) {
 		return new Promise((fulfill, reject)=>{
-			let conf = config.conf.bcart || {};
 			let bcartConf = {
-				dbURI: info.dbURI || conf.dbURI || 'mongodb://127.0.0.1:27017/txn_cache'
+				dbURI: info.dbURI || 'mongodb://127.0.0.1:27017/txn_cache'
 			};
 			
 			mongo.MongoClient.connect( bcartConf.dbURI, (err, db)=>{
