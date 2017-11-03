@@ -16,7 +16,7 @@
 	
 	bcart.Initialize({url:'https://demo.elandfintech.com:8443/'})
 	.then(()=>{
-		if ( process.argv.indexOf( '--purge-cache' ) ) {
+		if ( process.argv.indexOf( '--purge-cache' ) >= 0 ) {
 			console.log(color.yellow( "Purging transaction caches... (This will result in long transaction checking time...)" ) );
 			return bcart.PurgeCache();
 		}
