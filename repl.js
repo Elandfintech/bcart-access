@@ -4,6 +4,7 @@
 
 	const repl	= require( 'repl' );
 	const hist	= require( 'repl.history' );
+	const color = require( 'colors/safe' );
 	
 	const fs	= require( 'fs' );
 	const tiiny = require( 'tiinytiny' );
@@ -16,19 +17,19 @@
 	bcart.Initialize({url:'https://demo.elandfintech.com:8443/'})
 	.then(()=>{
 		if ( process.argv.indexOf( '--purge-cache' ) ) {
-			console.clog( "Purging transaction caches..." );
+			console.log(color.yellow( "Purging transaction caches... (This will result in long transaction checking time...)" ) );
 			return bcart.PurgeCache();
 		}
 	})
 	.then(()=>{
-		console.clog( "Checking for latest transactions..." );
+		console.log(color.yellow( "Checking for latest transactions..." ));
 		return bcart.UpdateCache();
 	})
 	.then(()=>{
 		let __defaultKey = null;
 		try {
 			let rawJSON = fs.readFileSync( `${__dirname}/default.key.json` );
-			console.clog( "Default key found! Loading..." );
+			console.log(color.yellow( "Default key found! Loading..." ));
 			__defaultKey = JSON.parse(rawJSON);
 		}
 		catch(e) {
@@ -36,7 +37,7 @@
 		}
 	
 	
-		console.clog( "Starting repl environment..." );
+		console.log(color.yellow( "Starting repl environment..." ));
 		const repl_server = repl.start( 'bcart-console >> ' );
 		hist(repl_server, './.history');
 		
