@@ -1,37 +1,43 @@
 (()=>{
 	"use strict";
 	
+	const tiiny	 = require( 'tiinytiny' );
+	const fs	 = require( 'fs' );
 	const BN	 = require( 'bignumber.js' );
 	const Web3	 = require( 'web3' );
 	const crypto = require( 'crypto' );
 	const ethTx	 = require( 'ethereumjs-tx' );
+	const mongo	 = require( 'mongodb' );
+	const config = require( 'json-cfg' );
+	const util	 = require( 'util' );
 	
 	const bcartAPIs = {};
 	
 	
 	
-	let __web3Conn = null;
+	let __web3Conn = null, __db = null;
 	Object.defineProperties(bcartAPIs, {
 		Initialize:{
 			writable:false, enumerable:true, configurable:false,
 			value:(info={})=>{
-				return new Promise((fulfill, reject)=>{
-					__web3Conn = new Web3(new Web3.providers.HttpProvider(info.url));
-					
-					try {
-						__web3Conn.eth.getMining((err, result)=>{
-							if (err) {
-								reject(err);
-								return;
-							}
-							
-							fulfill(__web3Conn);
-						});
-					}
-					catch(e) {
-						reject(e);
-					}
-				});
+				return __INITIATE_WEB3(info)
+				.then(()=>{return __INITIATE_DB(info);});
+			}
+		},
+		Finalize:{
+			writable:false, enumerable:true, configurable:false,
+			value:(info={})=>{
+				let _promises = [];
+				if ( __web3Conn ) {
+					__web3Conn = null;
+				}
+				
+				if ( __db ) {
+					_promises.push(__db.close());
+					__db = null;
+				}
+				
+				return tiiny.PromiseWaitAll(_promises);
 			}
 		},
 		Connection:{
@@ -157,7 +163,7 @@
 							let contract = JSON.parse(rawContract.toString( 'utf8' ));
 							let sha256 = crypto.createHash( 'sha256' );
 							record.contract = {
-								hash: sha256.update(rawContract).digest( 'hex' ),
+								hash: '0x' + sha256.update(rawContract).digest( 'hex' ),
 								content:contract,
 							};
 							record.symmerified  = true;
@@ -181,6 +187,136 @@
 		}
 		
 		return true;
+	}
+	function __INITIATE_WEB3(info) {
+		return new Promise((fulfill, reject)=>{
+			__web3Conn = new Web3(new Web3.providers.HttpProvider(info.url));
+			
+			try {
+				__web3Conn.eth.getMining((err, result)=>{
+					if (err) {
+						reject(err);
+						return;
+					}
+					
+					fulfill(__web3Conn);
+				});
+			}
+			catch(e) {
+				reject(e);
+			}
+		});
+	}
+	function __INITIATE_DB(info){
+		return __CONNECT_DB(info).then(__PREPARE_DB_CONTENT);
+	}
+	function __CONNECT_DB(info) {
+		return new Promise((fulfill, reject)=>{
+			let conf = config.conf.bcart || {};
+			let bcartConf = {
+				dbURI: info.dbURI || conf.dbURI || 'mongodb://127.0.0.1:27017/txn_cache'
+			};
+			
+			mongo.MongoClient.connect( bcartConf.dbURI, (err, db)=>{
+				if ( err ) {
+					reject(err);
+					return;
+				}
+				
+				tiiny.PromiseWaitAll([
+					db.createCollection('txn',  {strict:false}),
+					db.createCollection('meta', {strict:false})
+				])
+				.then(()=>{
+					fulfill(__db=db);
+				})
+				.catch((err)=>{
+					reject(err);
+				});
+			});
+		});
+	}
+	function __PREPARE_DB_CONTENT() {
+		return new Promise((fulfill, reject)=>{
+			let metaColl = __db.collection( 'meta' );
+			
+			metaColl.findOne({name:'lastBlock'})
+			.then((doc)=>{
+				return doc || {name:'lastBlock', value:null};
+			})
+			.then(___UPDATE_STORAGE)
+			.then((meta)=>{
+				return metaColl.findOneAndUpdate(
+					{name:'lastBlock'},
+					{$set:{value:meta.value}},
+					{upsert:true}
+				);
+			})
+			.then(fulfill)
+			.catch((err)=>{console.log(err); return Promise.reject(err);});
+		});
+		
+		function ___UPDATE_STORAGE(meta) {
+			let lastBlock = meta.value;
+			
+			
+			let latestBlock = false;
+			let txnColl = __db.collection( 'txn' );
+			return __TRAVERSE_BLOCKS(
+				{ from:'latest', to:lastBlock },
+				(block)=>{
+					latestBlock = latestBlock || block.hash;
+					
+					let _promises = [], op = null;
+					block.transactions.forEach((txn)=>{
+						if ( txn.symmerified ) {
+							let contract = txn.contract;
+							let cHash = contract.hash.substring(2);
+							let cType = contract.type || -1;
+							op = txnColl.findOneAndUpdate({hash:cHash}, {
+								$setOnInsert: {
+									hash:cHash,
+									status:cType < 0 ? -1 : 0,
+									type:cType,
+									init:block.timestamp,
+									update:0,
+									end:0,
+									contract:contract
+								},
+								$push:{
+									records:txn
+								}
+							}, {upsert:true, returnOriginal:false})
+							.then((result)=>{
+								const doc = result.value;
+								
+							});
+						}
+						else {
+							op = txnColl.findOneAndUpdate({hash:txn.hash}, {
+								$setOnInsert: {
+									hash:txn.hash,
+									status:1,
+									type:0,
+									init:block.timestamp,
+									update:0,
+									end:0,
+									contract:txn.input
+								},
+								$push:{
+									records:txn
+								}
+							}, {upsert:true, returnOriginal:false});
+						}
+						
+						_promises.push(op);
+					});
+				}
+			).then(()=>{
+				meta.value = latestBlock || meta.value;
+				return meta;
+			});
+		}
 	}
 	
 	module.exports = bcartAPIs;
