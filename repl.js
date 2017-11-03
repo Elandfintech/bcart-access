@@ -10,20 +10,33 @@
 	const util	= require( 'util' );
 	const bcart	= require( './bcart' );
 	
+	
+	
+	
 	bcart.Initialize({url:'https://demo.elandfintech.com:8443/'})
+	.then(()=>{
+		if ( process.argv.indexOf( '--purge-cache' ) ) {
+			console.clog( "Purging transaction caches..." );
+			return bcart.PurgeCache();
+		}
+	})
+	.then(()=>{
+		console.clog( "Checking for latest transactions..." );
+		return bcart.UpdateCache();
+	})
 	.then(()=>{
 		let __defaultKey = null;
 		try {
 			let rawJSON = fs.readFileSync( `${__dirname}/default.key.json` );
-			console.log( "Default key found! Loading..." );
+			console.clog( "Default key found! Loading..." );
 			__defaultKey = JSON.parse(rawJSON);
 		}
 		catch(e) {
 			__defaultKey = null;
 		}
-		
-		
-		
+	
+	
+		console.clog( "Starting repl environment..." );
 		const repl_server = repl.start( 'bcart-console >> ' );
 		hist(repl_server, './.history');
 		
@@ -86,13 +99,12 @@
 		}, [true, true, false]);
 		repl_server.on( 'exit', ()=>{ bcart.Finalize(); });
 	})
-	.catch((statuses)=>{
-		let [web3, db] = statuses;
-		if ( db.fulfilled ) {
-			db.close();
-		}
-		
-		return Promise.reject();
+	.catch((err)=>{
+		console.clog(err);
+	
+		return tiiny.PromiseWaitAll([
+			bcart.Finalize()
+		]);
 	});
 	
 	
