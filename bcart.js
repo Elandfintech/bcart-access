@@ -133,7 +133,6 @@
 			fullRecords: options.fullRecords,
 			parseTxn: options.parseTxn
 		};
-		
 		from = from || 'latest';
 		getEmpty = !!getEmpty;
 		to = to || null;
@@ -146,15 +145,18 @@
 		
 		
 		function __FETCH_NEXT_BLOCK(blockInfo) {
-			if (!getEmpty && (blockInfo.transactions.length > 0)) {
+			let signal = null, duplicated = (!!to && (blockInfo.hash === to));
+			if (!getEmpty && (blockInfo.transactions.length > 0) && !duplicated) {
 				control.more = true;
-				callback(blockInfo, control);
+				signal = callback(blockInfo, control);
 			}
 			
-			if ( control.more && (!to || (blockInfo.hash !== to)) ) {
+			if ( control.more && !duplicated) {
 				let number = new BN.BigNumber(blockInfo.parentHash);
 				if ( !number.equals(0) ) {
-					return __FETCH_BLOCK(blockInfo.parentHash, qOptions).then(__FETCH_NEXT_BLOCK);
+					return Promise.resolve(signal)
+					.then(()=>{return __FETCH_BLOCK(blockInfo.parentHash, qOptions);})
+					.then(__FETCH_NEXT_BLOCK);
 				}
 			}
 		}
@@ -261,7 +263,6 @@
 	function __PREPARE_DB() {
 	
 	}
-	
 	function __UPDATE_CACHE() {
 		return new Promise((fulfill, reject)=>{
 			let metaColl = __db.collection( 'meta' );
@@ -290,11 +291,12 @@
 			let txnColl = __db.collection( 'txn' );
 			return __TRAVERSE_BLOCKS(
 				{ from:'latest', to:lastBlock },
-				(block)=>{
+				(block, ctrl)=>{
 					latestBlock = latestBlock || block.hash;
-					
 					let _promises = [], op = null;
 					block.transactions.forEach((txn)=>{
+						txn.blockTime = block.timestamp;
+						
 						if ( txn.symmerified ) {
 							let contract = txn.contract;
 							let cHash = contract.hash;
@@ -305,10 +307,12 @@
 									version:contract.version,
 									status:cType < 0 ? -1 : 0,
 									type:cType,
-									init:block.timestamp,
-									update:0,
 									end:0,
+									update:0,
 									contract:contract
+								},
+								$min:{
+									init:block.timestamp
 								},
 								$push:{
 									records:txn
@@ -316,7 +320,6 @@
 							}, {upsert:true, returnOriginal:false})
 							.then((result)=>{
 								const doc = result.value;
-								
 							});
 						}
 						else {
@@ -339,6 +342,8 @@
 						
 						_promises.push(op);
 					});
+					
+					return Promise.all(_promises);
 				}
 			).then(()=>{
 				meta.value = latestBlock || meta.value;

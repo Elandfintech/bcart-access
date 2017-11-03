@@ -13,7 +13,7 @@
 	
 	
 	
-	
+	let __updateTimeout = null;
 	bcart.Initialize({url:'https://demo.elandfintech.com:8443/'})
 	.then(()=>{
 		if ( process.argv.indexOf( '--purge-cache' ) >= 0 ) {
@@ -24,6 +24,10 @@
 	.then(()=>{
 		console.log(color.yellow( "Checking for latest transactions..." ));
 		return bcart.UpdateCache();
+	})
+	.then(()=>{
+		console.log(color.red( "Start regular cache updating procedure..." ));
+		__updateTimeout = setTimeout(___UPDATE_TIMEOUT, 30 * 1000);
 	})
 	.then(()=>{
 		let __defaultKey = null;
@@ -87,6 +91,10 @@
 					
 					return bcart.SendRecord(from||__defaultKey, to, data, nounce);
 				},
+				updateCache:()=>{
+					console.log(color.yellow( "Start updating transaction cache..." ));
+					return bcart.UpdateCache();
+				},
 				traverseBlock:(...args)=>{
 					let [options, callback] = args;
 					if ( args.length < 2 ) {
@@ -98,11 +106,12 @@
 				}
 			}, [true, true, false])
 		}, [true, true, false]);
-		repl_server.on( 'exit', ()=>{ bcart.Finalize(); });
+		repl_server.on( 'exit', ()=>{ clearTimeout(__updateTimeout); bcart.Finalize();  });
 	})
 	.catch((err)=>{
 		console.clog(err);
-	
+		
+		clearTimeout(__updateTimeout);
 		return tiiny.PromiseWaitAll([
 			bcart.Finalize()
 		]);
@@ -114,4 +123,11 @@
 			this.log(util.inspect(arg, {colors:true, depth:10}));
 		});
 	};
+	
+	function ___UPDATE_TIMEOUT() {
+		console.log(color.red( "Updating txn cache..." ));
+		bcart.UpdateCache().then(r=>r,r=>r).then(()=>{
+			__updateTimeout = setTimeout(___UPDATE_TIMEOUT, 30 * 1000);
+		});
+	}
 })();
