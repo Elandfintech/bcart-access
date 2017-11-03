@@ -297,7 +297,7 @@
 					block.transactions.forEach((txn)=>{
 						if ( txn.symmerified ) {
 							let contract = txn.contract;
-							let cHash = contract.hash.substring(2);
+							let cHash = contract.hash;
 							let cType = contract.type || -1;
 							op = txnColl.findOneAndUpdate({hash:cHash}, {
 								$setOnInsert: {
