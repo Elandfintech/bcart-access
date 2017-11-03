@@ -66,7 +66,12 @@
 				//get current median gasPrice
 //				var price = web3Conn.eth.gasPrice;
 				
-				let data_hex = __web3Conn.toHex(JSON.stringify(data));   // extra note
+				let dataPayload = Buffer.concat([
+					Buffer.from( "SYM", "utf8" ),
+					new Uint8Array([1]),
+					Buffer.from( JSON.stringify(data), 'utf8' )
+				]).toString( 'hex' );
+				let data_hex = `0x${dataPayload}`;   // extra note
 				let tx = new ethTx({
 					nonce: __web3Conn.toHex(nonce),
 					to: to,
@@ -154,12 +159,13 @@
 				if ( parseTxn ) {
 					block.transactions.forEach((record)=>{
 						try {
-							if ( record.input === '0x' ) {
+							if ( record.input.substring(0, 8) !== '0x53594d' ) {
 								throw "Simple Transaction";
 							}
 							
-							let raw	= record.input;
-							let rawContract = Buffer.from(raw.substring(2), 'hex');
+							let raw	= record.input.substring(10);
+							let ver = parseInt(record.input.substring(8, 10), 16);
+							let rawContract = Buffer.from(raw, 'hex');
 							let contract = JSON.parse(rawContract.toString( 'utf8' ));
 							let sha256 = crypto.createHash( 'sha256' );
 							record.contract = {
@@ -167,6 +173,7 @@
 								content:contract,
 							};
 							record.symmerified  = true;
+							record.version = ver;
 						}
 						catch(err) {
 							record.symmerified = false;
