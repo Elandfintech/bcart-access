@@ -280,7 +280,7 @@
 				);
 			})
 			.then(fulfill)
-			.catch((err)=>{console.log(err); return Promise.reject(err);});
+			.catch((err)=>{console.log(err); reject(err);});
 		});
 		
 		function ___UPDATE_STORAGE(meta) {
