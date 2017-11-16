@@ -14,7 +14,7 @@
 	
 	
 	let __updateTimeout = null;
-	bcart.Initialize({url:'https://demo.elandfintech.com:8443/'})
+	bcart.Initialize({url:'https://jsonrpc.elandfintech.com/'})
 	.then(()=>{
 		if ( process.argv.indexOf( '--purge-cache' ) >= 0 ) {
 			console.log(color.yellow( "Purging transaction caches... (This will result in long transaction checking time...)" ) );
