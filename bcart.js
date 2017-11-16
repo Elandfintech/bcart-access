@@ -297,16 +297,20 @@
 					block.transactions.forEach((txn)=>{
 						txn.blockTime = block.timestamp;
 						
-						if ( txn.symmerified ) {
+						if ( txn.symmerified ) { // A Product Txn or Trade Txn
+												 /* type : {-1 = undefined, 0 = Simple, 1 = Prod, 2 = Trade }
+													status: {-1 = Invalid, 0 = unfinished, 1 = finish}
+													ext { undefined=0 = In cart, 1 = receipt, 2 = purchase, 3 = payment received, 4 = delivered }
+												 */
 							let contract = txn.contract;
 							let cHash = contract.hash;
 							let cType = contract.type || -1;
 							op = txnColl.findOneAndUpdate({hash:cHash}, {
 								$setOnInsert: {
 									hash:cHash,
-									init:0, update:0, end:0,
+									init:0, end:0,
 								},
-								$set:{
+								$set:{    
 									type:cType,
 									status:cType < 0 ? -1 : 0,
 									version:contract.version,
@@ -321,7 +325,7 @@
 							}, {upsert:true, returnOriginal:false})
 							.then((result)=>{
 								const doc = result.value;
-								let updates = { init:0, update:0, end:0 };
+								let updates = { init:0, end:0 };
 								
 								let shadow = doc.records.slice(0);
 								let first = shadow.shift();
@@ -330,22 +334,40 @@
 								
 								let terminated = false;
 								for( let record of shadow ) {
-									updates.update = record.blockTime;
-									if (record.contract.content.ext) {
-										updates.end = record.blockTime;
-										terminated = true;
-										break;
-									}
+														
+									switch(record.contract.content.ext) { // set the info. for order status 
+	     							case undefined:
+									case 0:	 
+
+									break;										  
+									case 1: //receipt
+									updates.end = record.blockTime;
+									terminated = true;
+									
+									break;										  
+									case 2: //purchase
+						
+									break;
+									case 3:
+
+									break;
+									case 4:
+
+									break;	
+									default:
+								    }
+								    
 								}
-								
-								if ( doc.type >= 0 && doc.type !== 1 && terminated ) {
+								// This txn is in the 'finish state'
+								if(doc.type > 0 && terminated ){
 									updates.status = 1;
+
 								}
 								
 								return txnColl.findOneAndUpdate({_id:doc._id}, {$set:updates});
 							});
 						}
-						else {
+						else {   // just a Simple Txn
 							op = txnColl.findOneAndUpdate({hash:txn.hash}, {
 								$setOnInsert: {
 									hash:txn.hash,
@@ -353,7 +375,6 @@
 									status:1,
 									type:0,
 									init:block.timestamp,
-									update:0,
 									end:0,
 									contract:txn.input
 								},
@@ -372,13 +393,13 @@
 			.then(()=>{
 				return new Promise((fulfill, reject)=>{
 					let _promises = [];
-					txnColl.find({type:1}).forEach((doc)=>{
+					txnColl.find({type:1}).forEach((doc)=>{    // type {0 = Simple, 1 = Prod, 2 = Trade }
 						let records = doc.records.slice(0);
 						
 						let prodTxn = records.shift(), update = {status:1};
 						records.forEach((record)=>{
 							let dest = new BN.BigNumber(record.to);
-							if (record.from === prodTxn.to && dest.eq(0)) {
+							if (record.from === prodTxn.to && dest.eq(0)) {  //this product is removed
 								update.status = -1;
 							}
 						});
@@ -387,6 +408,9 @@
 					}, ()=>{
 						Promise.all(_promises).then(fulfill);
 					});
+
+
+
 				});
 			})
 			.then(()=>{
