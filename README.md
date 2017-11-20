@@ -1,7 +1,8 @@
 ### bcart-access example
 #### * connect to Eland-DEV-ALPHA-01 server then enter bcart-console mode 
 
-> cd bcart-access 
+> cd bcart-access
+
 > node repl.js
 
 #### * Start typing command
