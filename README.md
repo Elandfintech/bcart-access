@@ -15,11 +15,10 @@
 #### * send a transaction to destination address
 
 > var nonce = web3.eth.getTransactionCount('0x'+bcart.key.address,'pending');
+
 > var toWho = '0x10388ae25100d3b977d86b44424be42fbf317149';
 
-#### * get current time
-
-> var timestamp = Math.round(new Date().getTime()/1000);
+> var timestamp = Math.round(new Date().getTime()/1000);  // get current time 
 
 > var data = {
 >	     "type": 2,
