@@ -13,7 +13,7 @@
  
 > bcart.key
 
-#### * Send a transaction to destination address
+#### * Send a record to destination address
 
 > var nonce = web3.eth.getTransactionCount('0x'+bcart.key.address,'pending');
 
@@ -36,4 +36,4 @@
 #### * Note
 - type is tx_type : {-1 = undefined, 0 = Simple, 1 = Prod, 2 = Trade }
 - ext is order status defined as { undefined=0 = In cart, 1 = receipt, 2 = purchase }
-- If different order status but the same order, the value of "time" must be the same. 
+- If order status change in the same record, the value of "time" must be set as the same timestamp. 
