@@ -15,7 +15,8 @@
   },
   "devDependencies": {},
   "scripts": {
-    "repl": "node repl.js"
+    "repl": "node repl.js",
+    "repl_purge": "node repl.js --purge-cache"
   },
   "author": "JCloudYu",
   "license": "WTFPL"
