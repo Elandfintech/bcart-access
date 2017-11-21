@@ -1,5 +1,5 @@
 ### bcart-access example
-#### * connect to Eland-DEV-ALPHA-01 server then enter bcart-console mode 
+#### * Connect to Eland-DEV-ALPHA-01 server then enter bcart-console mode 
 
 > cd bcart-access
 
@@ -9,11 +9,11 @@
 
 > bcart.getBlock('latest',true)
 
-#### * show priv_key and address
+#### * Show priv_key and address
  
 > bcart.key
 
-#### * send a transaction to destination address
+#### * Send a transaction to destination address
 
 > var nonce = web3.eth.getTransactionCount('0x'+bcart.key.address,'pending');
 
@@ -22,7 +22,7 @@
 > var timestamp = Math.round(new Date().getTime()/1000);  // get current time 
 
 > var data = {
->	     "type": 2,
+>	     "type": 2,       // 
 >	     "basis": {
 >		          "prod": "0xd00801f27b1373459e509dbb596fd36fe8bf4fd963ff1c4814dc1ac75a2ba444",
 >		          "time": timestamp
@@ -32,3 +32,8 @@
 
 
 > bcart.sendRecord(bcart.key,toWho,data,nonce);
+
+#### * Note
+- type is tx_type : {-1 = undefined, 0 = Simple, 1 = Prod, 2 = Trade }
+- ext is order status defined as { undefined=0 = In cart, 1 = receipt, 2 = purchase }
+- If different order status but the same order, the value of "time" must be the same. 
